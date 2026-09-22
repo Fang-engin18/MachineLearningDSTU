@@ -1,0 +1,8 @@
+# Настройки сред разработки (IDE)
+.vscode/
+.idea/
+
+# Файлы проекта и тесты
+ML_google.ipynb
+pca.py
+test.py
