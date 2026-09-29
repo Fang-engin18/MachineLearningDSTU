@@ -62,7 +62,7 @@ def ci_var(x: np.ndarray, alpha: float = 0.05):
     s2 = np.var(x, ddof=1)
     chi2_low = stats.chi2.ppf(alpha / 2, df=n - 1)
     chi2_high = stats.chi2.ppf(1 - alpha / 2, df=n - 1)
-    return (n - 1) * s2 / chi2_high, (n - 1) * s2 / low
+    return (n - 1) * s2 / chi2_high, (n - 1) * s2 / chi2_low
 
 # --- ИСПРАВЛЕНИЕ: Обернули свободный код в функции, чтобы принимать аргумент data ---
 
