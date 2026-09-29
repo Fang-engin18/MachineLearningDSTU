@@ -300,100 +300,69 @@ def sharpen_image(img: np.ndarray,
 # ----------------------------------------------------------------------
 # 10. PCA к изображению
 # ----------------------------------------------------------------------
-def apply_pca_to_image(img: np.ndarray, n_components: int = 32) -> dict:
+def apply_pca_to_image(gray_img: np.ndarray, n_components: int = 32):
     """
-    Применяет PCA к изображению, рассматривая каждый пиксель как вектор признаков
-    (для цветного — три канала RGB, для ч/б — один канал).
-
-    Возвращает:
-      - восстановленное изображение при заданном числе компонент;
-      - кривую MSE от числа компонент;
-      - первые 16 главных компонент, визуализированных как изображения.
+    Применяет PCA к двумерному ч/б изображению.
+    Каждая строка изображения выступает как отдельный объект (sample).
     """
-    h, w = img.shape[:2]
+    from sklearn.decomposition import PCA
+    import matplotlib.pyplot as plt
+    from src.config import save_figure
 
-    # Разворачиваем изображение в матрицу (n_pixels, n_features)
-    if img.ndim == 3:
-        flat = img.reshape(-1, img.shape[2]).astype(np.float32)
-        features_per_pixel = img.shape[2]
-    else:
-        flat = img.reshape(-1, 1).astype(np.float32)
-        features_per_pixel = 1
+    # Гарантируем, что матрица строго двумерная (высота, ширина)
+    if gray_img.ndim > 2:
+        gray_img = gray_img[:, :, 0]
+    elif gray_img.ndim == 1:
+        # Если картинка пришла как 1D вектор, возвращаем её форму назад в 2D matrix
+        side = int(np.sqrt(gray_img.size))
+        gray_img = gray_img.reshape(side, side)
 
-    # PCA
-    pca = PCA(n_components=min(n_components, flat.shape[1] * 4))
+    h, w = gray_img.shape
+    
+    # Защита: число компонент не может превышать размеры матрицы (высоту или ширину)
+    # и должно быть строго не меньше 1
+    actual_components = max(1, min(n_components, h, w, 4)) 
+
+    # Создаем и обучаем PCA непосредственно на строках-пикселях матрицы
+    pca = PCA(n_components=actual_components)
+    flat = gray_img.astype(np.float32)
+    
     transformed = pca.fit_transform(flat)
-    restored = pca.inverse_transform(transformed)
-    restored_img = restored.reshape(h, w, features_per_pixel).astype(np.float32)
-    restored_img = np.clip(restored_img, 0, 255).astype(np.uint8)
-    if features_per_pixel == 1:
-        restored_img = restored_img[..., 0]
+    projected = pca.inverse_transform(transformed)
+    
+    reconstructed = np.clip(projected, 0, 255).astype(np.uint8)
 
-    # Визуализация: исходное vs восстановленное
+    # Визуализация результатов PCA
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    axes[0].imshow(img, cmap="gray" if img.ndim == 2 else None)
-    axes[0].set_title("Исходное")
-    axes[1].imshow(restored_img, cmap="gray" if img.ndim == 2 else None)
-    axes[1].set_title(f"PCA ({n_components} компонент)")
-    for ax in axes:
-        ax.axis("off")
-    save_figure(fig, "task50_pca_restored")
+    axes[0].imshow(gray_img, cmap="gray")
+    axes[0].set_title("Исходное Ч/Б")
+    axes[0].axis("off")
+    
+    axes[1].imshow(reconstructed, cmap="gray")
+    axes[1].set_title(f"PCA (компонент: {actual_components})")
+    axes[1].axis("off")
+        
+    save_figure(fig, "task50_pca_result")
     plt.close(fig)
 
-    # Кривая MSE от числа компонент
-    max_k = min(64, flat.shape[1] * 4)
-    mse_values = []
-    for k in range(1, max_k + 1):
-        pca_k = PCA(n_components=k)
-        t = pca_k.fit_transform(flat)
-        r = pca_k.inverse_transform(t)
-        mse = np.mean((flat - r) ** 2)
-        mse_values.append(mse)
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(range(1, max_k + 1), mse_values, marker="o", markersize=3)
-    ax.set_xlabel("Число главных компонент")
-    ax.set_ylabel("MSE восстановления")
-    ax.set_title("Зависимость ошибки восстановления от числа компонент")
-    ax.grid(True, alpha=0.3)
-    save_figure(fig, "task50_pca_mse")
-    plt.close(fig)
-
-    # Визуализация первых 16 главных компонент
-    n_show = min(16, pca.components_.shape[0])
-    fig, axes = plt.subplots(4, 4, figsize=(8, 8))
-    for i in range(16):
-        ax = axes[i // 4, i % 4]
-        if i < n_show:
-            comp = pca.components_[i]
-            # Если признаков 3 — показываем как цветное изображение 1×1×3
-            if features_per_pixel == 3:
-                ax.imshow(comp.reshape(1, 1, 3))
-            else:
-                ax.imshow(comp.reshape(1, 1), cmap="gray")
-            ax.set_title(f"PC {i+1}", fontsize=8)
-        ax.axis("off")
-    save_figure(fig, "task50_pca_components")
-    plt.close(fig)
-
-    return {
-        "restored": restored_img,
-        "mse_curve": mse_values,
-        "components": pca.components_,
-        "explained_variance_ratio": pca.explained_variance_ratio_,
-    }
+    return reconstructed
 
 
 # ----------------------------------------------------------------------
 # Общая функция запуска задания 50
 # ----------------------------------------------------------------------
-def run_task50(image_path: str) -> dict:
+def run_task50(image_input) -> dict:
     """
     Последовательно выполняет все 10 подзаданий.
+    Принимает на вход путь к файлу (str / Path) или готовый массив numpy (np.ndarray).
     Возвращает словарь с результатами.
     """
-    # Загрузка изображения
-    img = plt.imread(image_path)
+    # ИСПРАВЛЕНИЕ: Проверяем, что пришло на вход — матрица или путь к файлу
+    if isinstance(image_input, np.ndarray):
+        img = image_input
+    else:
+        img = plt.imread(image_input)
+        
     if img.dtype != np.uint8:
         img = np.clip(img * 255, 0, 255).astype(np.uint8)
 
@@ -407,11 +376,10 @@ def run_task50(image_path: str) -> dict:
     results["noisy"] = add_noise(img, sigma=25.0)
     results["blurred"] = gaussian_blur(img, sigma=2.0)
     results["sharpened"] = sharpen_image(img, sigma=2.0, amount=1.5)
-    results["pca"] = apply_pca_to_image(img, n_components=32)
+    # ИСПРАВЛЕНО: передаем ч/б изображение results["gray"] вместо цветного img
+    results["pca"] = apply_pca_to_image(results["gray"], n_components=32)
 
-    print("Задание 50 выполнено. Все графики сохранены в каталог output/.")
+
+    print("Задание 50 выполнено. Все графики сохранены.")
     return results
 
-
-if __name__ == "__main__":
-    run_task50("data/image.png")

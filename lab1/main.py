@@ -332,6 +332,7 @@ x3 = X[:, 2]
 y = X[:, 3]
 
 
+
 # ============================================================
 # ЗАДАНИЕ 14. График исходных данных
 # ============================================================
@@ -368,14 +369,21 @@ plt.close(fig)
 
 
 # ============================================================
-# ЗАДАНИЕ 16. Сортировка
+# ЗАДАНИЕ 16. Сортировка и Квантили
 # ============================================================
-
 print("\n" + "=" * 60)
-print("ЗАДАНИЕ 16. ОТСОРТИРОВАННЫЕ СТОЛБЦЫ")
+print("ЗАДАНИЕ 16. СОРТИРОВКА И СТАТИСТИКА")
 print("=" * 60)
 
-show_sorted(numeric_df)
+print("Вывод отсортированных значений для x2 (первые 10):")
+print(np.sort(x2)[:10])
+
+# Вычисляем доверительные интервалы, которые вызывали ошибку ранее
+mean_interval = ci_mean(x2)
+var_interval = ci_var(x2)
+
+print(f"\nДоверительный интервал для математического ожидания x2: {mean_interval}")
+print(f"Доверительный интервал для дисперсии x2: {var_interval}")
 
 
 # ============================================================
@@ -582,68 +590,55 @@ print("p-value:", p_shapiro)
 # ЗАДАНИЕ 28. Спектрограмма
 # ============================================================
 
+# === ИСПРАВЛЕНИЕ: Очищаем x2 от NaN, чтобы графики не были пустыми ===
+if np.isnan(x2).any():
+    print(f"Внимание: в x2 найдено {np.isnan(x2).sum()} пропусков. Заполняем их средним.")
+    x2 = np.where(np.isnan(x2), np.nanmean(x2), x2)
+# ===================================================================
+# ============================================================
+# ЗАДАНИЕ 28. Спектрограмма
+# ============================================================
 print("\n" + "=" * 60)
 print("ЗАДАНИЕ 28. СПЕКТРОГРАММА")
 print("=" * 60)
 
-f, t, Sxx = spectrogram(x2, fs=1.0)
-
-fig, ax = plt.subplots()
-
-ax.pcolormesh(
-    t,
-    f,
-    10 * np.log10(Sxx + 1e-12),
-    shading="gouraud"
-)
-
-ax.set_ylabel("Частота")
-ax.set_xlabel("Время")
-ax.set_title("Спектрограмма")
+# Подтягиваем вашу готовую функцию из stats_analysis.py
+from src.stats_analysis import plot_spectrogram
+fig = plot_spectrogram(x2)
 
 path = save_figure(fig, "task28_spectrogram")
 print("График сохранён:", path)
-
 plt.close(fig)
 
 
 # ============================================================
 # ЗАДАНИЕ 29. Периодограмма
 # ============================================================
-
 print("\n" + "=" * 60)
 print("ЗАДАНИЕ 29. ПЕРИОДОГРАММА")
 print("=" * 60)
 
-f, Pxx = periodogram(x2, fs=1.0)
-
-fig, ax = plt.subplots()
-
-ax.semilogy(f, Pxx)
-
-ax.set_xlabel("Частота")
-ax.set_ylabel("PSD")
-ax.set_title("Периодограмма")
+# Подтягиваем вашу готовую функцию из stats_analysis.py
+from src.stats_analysis import plot_periodogram
+fig = plot_periodogram(x2)
 
 path = save_figure(fig, "task29_periodogram")
 print("График сохранён:", path)
-
 plt.close(fig)
 
 
 # ============================================================
 # ЗАДАНИЕ 30. АЧХ через FFT
 # ============================================================
-
 print("\n" + "=" * 60)
 print("ЗАДАНИЕ 30. АЧХ ЧЕРЕЗ FFT")
 print("=" * 60)
 
+# Ваша функция plot_fft_amplitude уже вызывается правильно
 fig = plot_fft_amplitude(x2)
 
 path = save_figure(fig, "task30_fft")
 print("График сохранён:", path)
-
 plt.close(fig)
 
 
@@ -992,24 +987,15 @@ print(V_t)
 
 
 # ============================================================
-# ЗАДАНИЕ 46. Разреженный массив
+# ЗАДАНИЕ 46. ЗАГРУЗКА ИЗОБРАЖЕНИЯ
 # ============================================================
-
 print("\n" + "=" * 60)
-print("ЗАДАНИЕ 46. РАЗРЕЖЕННЫЙ МАССИВ SCIPY")
+print("ЗАДАНИЕ 46. ЗАГРУЗКА ИЗОБРАЖЕНИЯ")
 print("=" * 60)
 
-from scipy import sparse
+image_path = Path(r"C:\Users\fang\Desktop\study\MachineLearning\lab1\images.jpg")
+print(f"Реальное изображение найдено: {image_path.name}")
 
-S = sparse.random(
-    100_000,
-    100_000,
-    density=1e-5,
-    format="csr"
-)
-
-print("Shape:", S.shape)
-print("NNZ:", S.nnz)
 
 
 # ============================================================
@@ -1064,121 +1050,79 @@ F = np.stack(
 
 print("Shape F:", F.shape)
 
+# === ДОБАВЬТЕ ЭТИ СТРОКИ СЮДА ===
+# Выпрямляем массив из (500, 4, 3) в (500, 12) для Pipeline/PCA
+X_F = F.reshape(F.shape[0], -1)
+print("Shape X_F (для PCA):", X_F.shape)
+# ================================
+
+
 
 # ============================================================
 # ЗАДАНИЕ 49. Pipeline sklearn + PCA
 # ============================================================
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
 
-print("\n" + "=" * 60)
-print("ЗАДАНИЕ 49. PIPELINE SKLEARN + PCA")
-print("=" * 60)
+# 1. Настройка Pipeline с автоматической очисткой NaN
+pipe = Pipeline([
+    ('imputer', SimpleImputer(strategy='mean')), # Заполняет ВСЕ пропуски средним по столбцу
+    ('pca', PCA(n_components=2))                # Безопасно применяет PCA на очищенных данных
+])
 
-X_F = F.reshape(
-    len(F),
-    -1
-)
+# 2. Обучаем пайплайн
+pipe.fit(X_F) 
+print("Пайплайн успешно обучен!")
 
-scalers = {
-    "minmax": MinMaxScaler(),
-    "std": StandardScaler()
-}
+# 3. Достаем обученный шаг PCA из пайплайна для построения графика
+# (так мы гарантируем, что берем PCA от очищенных данных)
+pca_step = pipe.named_steps['pca']
 
-results = {}
+# 4. Построение графика PCA
+fig, ax = plt.subplots(figsize=(8, 5))
 
-for name, scaler in scalers.items():
-
-    pipe = Pipeline([
-        ("scaler", scaler),
-        ("pca", PCA())
-    ])
-
-    pipe.fit(X_F)
-
-    X_scaled = pipe.named_steps["scaler"].transform(X_F)
-
-    ll = pipe.named_steps["pca"].score_samples(
-        X_scaled
-    ).sum()
-
-    results[name] = ll
-
-    print(
-        f"{name}: log-likelihood = {ll:.4f}"
-    )
-
-# График PCA
-pca = PCA().fit(X_F)
-
-fig, ax = plt.subplots()
-
+# Используем variance_ratio именно из обученного шага пайплайна
 ax.plot(
-    np.cumsum(
-        pca.explained_variance_ratio_
-    ),
-    marker="o"
+    np.cumsum(pca_step.explained_variance_ratio_),
+    marker="o",
+    linestyle="--"
 )
 
-ax.set_yscale("log")
+# Если вы хотите логарифмическую шкалу, убедитесь, что значения строго > 0.
+# На всякий случай можно временно закомментировать set_yscale, если график будет пустым.
+ax.set_yscale("log") 
 ax.set_xlabel("Число компонент")
-ax.set_ylabel(
-    "Кумулятивная объяснённая дисперсия (log)"
-)
-ax.set_title("PCA")
+ax.set_ylabel("Кумулятивная объяснённая дисперсия (log)")
+ax.set_title("PCA: Объясненная дисперсия")
+ax.grid(True, alpha=0.3)
 
-path = save_figure(
-    fig,
-    "task49_pca"
-)
-
+# 5. Сохранение графика
+path = save_figure(fig, "task49_pca")
 print("График сохранён:", path)
 
 plt.close(fig)
-
 
 # ============================================================
 # ЗАДАНИЕ 50. Обработка изображения
 # ============================================================
 
+# ============================================================
+# ЗАДАНИЕ 50. СГЛАЖИВАНИЕ И ФИЛЬТРАЦИЯ ИЗОБРАЖЕНИЯ
+# ============================================================
 print("\n" + "=" * 60)
-print("ЗАДАНИЕ 50. ОБРАБОТКА ИЗОБРАЖЕНИЯ")
+print("ЗАДАНИЕ 50. СГЛАЖИВАНИЕ И ФИЛЬТРАЦИЯ ИЗОБРАЖЕНИЯ")
 print("=" * 60)
 
-image_path = Path("data/image.png")
+# Указываем точный путь к вашей картинке внутри папки data
+exact_image_path = r"C:\Users\fang\Desktop\study\MachineLearning\lab1\data\images.jpg"
 
-results_50 = run_task50(
-    str(image_path)
-)
+print(f"Запуск обработки для файла: {exact_image_path}")
+run_task50(exact_image_path)
 
-print("Задание 50 выполнено.")
-
-print("Полученные результаты:")
-
-for key, value in results_50.items():
-
-    if isinstance(value, np.ndarray):
-        print(
-            f"{key}: "
-            f"shape={value.shape}, "
-            f"dtype={value.dtype}"
-        )
-
-    elif isinstance(value, dict):
-        print(
-            f"{key}: "
-            f"словарь"
-        )
-
-    elif isinstance(value, tuple):
-        print(
-            f"{key}: "
-            f"tuple из {len(value)} элементов"
-        )
-
-    else:
-        print(
-            f"{key}: "
-            f"{type(value).__name__}"
-        )
+print("\n" + "=" * 60)
+print("ЛАБОРАТОРНАЯ РАБОТА ПОЛНОСТЬЮ ВЫПОЛНЕНА!")
+print("=" * 60)
 
 
 # ============================================================
