@@ -29,3 +29,17 @@ def timestamped_filename(base: str, ext: str) -> str:
     from datetime import datetime
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return os.path.join(OUTPUT_DIR, f"{base}_{ts}.{ext}")
+
+import os
+import matplotlib.pyplot as plt
+
+def save_figure(fig, name: str):
+    """Сохраняет переданный график в папку с результатами"""
+    # Создаем папку 'results', если её нет
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Путь сохранения файла
+    filepath = os.path.join(output_dir, f"{name}.png")
+    fig.savefig(filepath, bbox_inches="tight", dpi=300)
+    print(f"График сохранен: {filepath}")

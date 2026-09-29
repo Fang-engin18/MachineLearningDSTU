@@ -222,14 +222,52 @@ def gaussian_blur(img: np.ndarray, sigma: float = 2.0) -> np.ndarray:
     blurred = np.clip(blurred, 0, 255).astype(np.uint8)
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    axes[0].imshow(img);     axes[0].set_title("Исходное")
-    axes[1].imshow(blurred); axes[1].set_title(f"Размытие (σ = {sigma})")
+    axes[0].imshow(img);      axes[0].set_title("Исходное")
+    axes[1].imshow(blurred);  axes[1].set_title(f"Размытие (σ = {sigma})")
     for ax in axes:
         ax.axis("off")
     save_figure(fig, "task50_blurred")
     plt.close(fig)
 
     return blurred
+
+
+# ----------------------------------------------------------------------
+# Главная функция запуска задачи (ЭТОГО НЕ ХВАТАЛО ДЛЯ ИМПОРТА)
+# ----------------------------------------------------------------------
+def run_task50(img: np.ndarray) -> None:
+    """
+    Последовательно запускает все этапы обработки изображения.
+    Принимает на вход исходное цветное изображение RGB (массив numpy).
+    """
+    print("Запуск обработки изображения (Задача 50)...")
+    
+    # 1. Каналы
+    channels = split_channels(img)
+    
+    # 2. Поворот
+    rotated = rotate_image(img, angle=40.0)
+    
+    # 3. Ч/б
+    gray = to_grayscale(img)
+    
+    # 4. Гистограмма
+    hist_info = gray_histogram(gray)
+    
+    # 5. Разделение по гистограмме
+    p1, p2, p3 = split_by_histogram(gray, hist_info)
+    
+    # 6. Рамка
+    framed = add_circular_frame(img)
+    
+    # 7. Шум
+    noisy = add_noise(img, sigma=25.0)
+    
+    # 8. Размытие
+    blurred = gaussian_blur(img, sigma=2.0)
+    
+    print("Обработка успешно завершена! Графики сохранены.")
+
 
 
 # ----------------------------------------------------------------------

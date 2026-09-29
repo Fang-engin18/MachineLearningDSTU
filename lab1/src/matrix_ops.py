@@ -1,3 +1,6 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
 from scipy import sparse
 S = sparse.random(100_000, 100_000, density=1e-5, format="csr")
 print("NNZ:", S.nnz)

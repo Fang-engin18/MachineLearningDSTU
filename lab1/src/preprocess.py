@@ -1,3 +1,6 @@
+import pandas as pd
+import numpy as np
+
 def handle_missing(df: pd.DataFrame, col: str, action: str, value=None) -> pd.DataFrame:
     """
     action:

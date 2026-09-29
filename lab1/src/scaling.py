@@ -1,4 +1,6 @@
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+import numpy as np
+import matplotlib.pyplot as plt
 
 x = data[:, [0]]  # первый столбец
 custom_mm = MinMaxScalerCustom().fit(x)

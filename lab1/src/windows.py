@@ -1,3 +1,6 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
 def sliding_window(x: np.ndarray, width: int) -> np.ndarray:
     """Возвращает матрицу окон формы (n - width + 1, width)."""
     if width <= 0 or width > len(x):
