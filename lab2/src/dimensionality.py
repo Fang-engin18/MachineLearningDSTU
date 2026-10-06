@@ -341,7 +341,92 @@ def pca_analysis(X_scaled, feature_names, y, output_dir):
     loading_df.to_excel(
         output_dir / "pca_loadings.xlsx"
     )
+    # --------------------------------------------------------
+    # PCA Biplot
+    # --------------------------------------------------------
 
+    # Берём первые две главные компоненты
+    pca_2d = scores[:, :2]
+
+    plt.figure(figsize=(9, 7))
+
+    # Точки объектов
+    scatter = plt.scatter(
+        pca_2d[:, 0],
+        pca_2d[:, 1],
+        c=y,
+        cmap="viridis",
+        alpha=0.7,
+        s=35
+    )
+
+    # Направления исходных признаков
+    for i, feature in enumerate(feature_names):
+
+        x = loadings[i, 0]
+        y_arrow = loadings[i, 1]
+
+        plt.arrow(
+            0,
+            0,
+            x,
+            y_arrow,
+            color="red",
+            width=0.003,
+            head_width=0.04,
+            length_includes_head=True
+        )
+
+        plt.text(
+            x * 1.15,
+            y_arrow * 1.15,
+            feature,
+            fontsize=12,
+            fontweight="bold"
+        )
+
+    plt.axhline(
+        0,
+        color="gray",
+        linewidth=0.8
+    )
+
+    plt.axvline(
+        0,
+        color="gray",
+        linewidth=0.8
+    )
+
+    plt.xlabel(
+        f"PC1 ({explained[0] * 100:.2f}%)"
+    )
+
+    plt.ylabel(
+        f"PC2 ({explained[1] * 100:.2f}%)"
+    )
+
+    plt.title(
+        "PCA Biplot — первые две главные компоненты"
+    )
+
+    plt.grid(
+        True,
+        alpha=0.3
+    )
+
+    plt.colorbar(
+        scatter,
+        label="y"
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        output_dir / "04_pca_biplot.png",
+        dpi=200
+    )
+
+    plt.show()
     # --------------------------------------------------------
     # PCA 2D
     # --------------------------------------------------------

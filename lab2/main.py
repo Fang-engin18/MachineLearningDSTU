@@ -65,7 +65,8 @@ def main():
         run_clustering_analysis(
     CLUSTERING_DATASET,
     OUTPUT_DIR,
-    variant=11)
+    variant=11
+)
     )
 
     # ========================================================
